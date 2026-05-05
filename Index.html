@@ -1,1 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoktorOS 1.0 — Linux Distribution</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
 
+  :root {
+    --bg:        #0a0c10;
+    --panel:     #0f1319;
+    --border:    #1e2530;
+    --accent:    #00d4aa;
+    --accent2:   #0090ff;
+    --accent3:   #ff6b35;
+    --text:      #c8d3e0;
+    --dim:       #4a5568;
+    --green:     #39d353;
+    --yellow:    #e3b341;
+    --red:       #f85149;
+    --purple:    #bc8cff;
+    --cyan:      #79c0ff;
+    --orange:    #ffa657;
+    --white:     #f0f6fc;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 32px;
+    gap: 16px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  #topbar .logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  #topbar .logo span { color: var(--accent2); }
+  #topbar .spacer { flex: 1; }
+  #topbar .stat { color: var(--dim); }
+  #topbar .stat b { color: var(--text); }
+  #clock { color: var(--accent); font-weight: 500; }
+
+  /* ── DESKTOP ── */
+  #desktop {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── TASKBAR (left) ── */
+  #taskbar {
+    width: 48px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 4px;
+    z-index: 10;
+  }
+  .taskbtn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    transition: all .15s;
+    position: relative;
+  }
+  .taskbtn:hover, .taskbtn.active {
+    background: rgba(0,212,170,.12);
+    color: var(--accent);
+  }
+  .taskbtn .tip {
+    display: none;
+    position: absolute;
+    left: 46px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--text);
+    pointer-events: none;
+  }
+  .taskbtn:hover .tip { display: block; }
+
+  /* ── MAIN AREA ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TABS ── */
+  #tabs {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 8px;
+    gap: 2px;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 6px 14px;
+    font-size: 11px;
+    color: var(--dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-close {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 10px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .tab-close:hover { background: var(--red); color: white; }
+  #new-tab-btn {
+    padding: 6px 10px;
+    font-size: 16px;
+    color: var(--dim);
+    cursor: pointer;
+    background: none; border: none;
+    transition: color .15s;
+    align-self: center;
+  }
+  #new-tab-btn:hover { color: var(--accent); }
+
+  /* ── TERMINAL ── */
+  #term-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+  #output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    line-height: 1.7;
+    font-size: 13px;
+  }
+  #output::-webkit-scrollbar { width: 6px; }
+  #output::-webkit-scrollbar-track { background: transparent; }
+  #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .line { display: flex; flex-wrap: wrap; gap: 0; }
+  .prompt-line { display: flex; align-items: center; gap: 0; }
+  .ps-user { color: var(--green); }
+  .ps-at    { color: var(--dim); }
+  .ps-host  { color: var(--cyan); }
+  .ps-colon { color: var(--dim); }
+  .ps-dir   { color: var(--accent2); font-weight: 600; }
+  .ps-git   { color: var(--purple); }
+  .ps-dollar{ color: var(--accent); margin: 0 6px 0 4px; }
+  .ps-cmd   { color: var(--white); }
+
+  .out-line { padding-left: 0; white-space: pre-wrap; word-break: break-all; }
+  .c-green  { color: var(--green); }
+  .c-yellow { color: var(--yellow); }
+  .c-red    { color: var(--red); }
+  .c-blue   { color: var(--accent2); }
+  .c-cyan   { color: var(--cyan); }
+  .c-purple { color: var(--purple); }
+  .c-orange { color: var(--orange); }
+  .c-dim    { color: var(--dim); }
+  .c-accent { color: var(--accent); }
+  .c-white  { color: var(--white); }
+  .c-bold   { font-weight: 700; }
+
+  /* Input row */
+  #input-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  .input-prompt { display: flex; align-items: center; flex-shrink: 0; font-size: 13px; }
+  #cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    caret-color: var(--accent);
+    margin-left: 4px;
+  }
+
+  /* ── PANELS ── */
+  #panels {
+    width: 280px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 8px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  #file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    font-size: 12px;
+  }
+  #file-tree::-webkit-scrollbar { width: 4px; }
+  #file-tree::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .tree-item {
+    padding: 3px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    transition: background .1s;
+    user-select: none;
+  }
+  .tree-item:hover { background: rgba(255,255,255,.04); }
+  .tree-item.dir { color: var(--cyan); }
+  .tree-item.exec { color: var(--green); }
+  .tree-item.link { color: var(--purple); }
+  .tree-item.conf { color: var(--yellow); }
+  .tree-indent { display: inline-block; width: 14px; flex-shrink: 0; }
+
+  #sysinfo {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .info-row { display: flex; justify-content: space-between; margin: 3px 0; }
+  .info-label { color: var(--dim); }
+  .info-val   { color: var(--text); }
+
+  .bar-wrap { background: var(--border); border-radius: 2px; height: 4px; margin: 4px 0 8px; }
+  .bar-fill  { height: 4px; border-radius: 2px; transition: width .5s; }
+
+  /* ── BOOT SCREEN ── */
+  #boot {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    gap: 20px;
+  }
+  #boot .logo-big {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 8px;
+  }
+  #boot .logo-big span { color: var(--accent2); }
+  #boot .version { color: var(--dim); font-size: 13px; letter-spacing: 2px; }
+  #boot-log {
+    width: 560px;
+    max-width: 90vw;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--dim);
+    height: 180px;
+    overflow: hidden;
+  }
+  #boot-bar-wrap {
+    width: 560px; max-width: 90vw;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+  #boot-bar { height: 3px; background: var(--accent); border-radius: 2px; width: 0; transition: width .3s; }
+
+  .blink { animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* scrollbar for output */
+  #output { scrollbar-gutter: stable; }
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div class="logo-big">Doktor<span>OS</span></div>
+  <div class="version">VERSION 1.0.0 LTS — KERNEL 6.8.0-doktoros</div>
+  <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
+  <div id="boot-log"></div>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">Doktor<span>OS</span></div>
+  <div class="stat">kernel <b>6.8.0-doktoros</b></div>
+  <div class="stat">uptime <b id="uptime">0:00</b></div>
+  <div class="spacer"></div>
+  <div class="stat">load <b id="loadavg">0.12</b></div>
+  <div class="stat">mem <b id="memuse">412MB</b>/8GB</div>
+  <div id="clock">00:00:00</div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <!-- TASKBAR -->
+  <div id="taskbar">
+    <button class="taskbtn active" title="terminal" onclick="showApp('terminal')">⌨<span class="tip">Terminal</span></button>
+    <button class="taskbtn" onclick="showApp('editor')">📝<span class="tip">Editor</span></button>
+    <button class="taskbtn" onclick="showApp('processes')">📊<span class="tip">Processes</span></button>
+    <button class="taskbtn" onclick="showApp('network')">🌐<span class="tip">Network</span></button>
+    <button class="taskbtn" onclick="showApp('packages')">📦<span class="tip">Packages</span></button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="tabs">
+      <div class="tab active" id="tab-0" onclick="switchTab(0)">
+        <span>🖥️ terminal</span>
+        <button class="tab-close" onclick="closeTab(event,0)">×</button>
+      </div>
+      <button id="new-tab-btn" onclick="newTab()">+</button>
+    </div>
+
+    <div id="term-container">
+      <div id="output"></div>
+      <div id="input-row">
+        <div class="input-prompt" id="live-prompt"></div>
+        <input id="cmd-input" autofocus spellcheck="false" autocomplete="off" placeholder="">
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE PANELS -->
+  <div id="panels">
+    <div class="panel-header">📁 File System</div>
+    <div id="file-tree"></div>
+    <div id="sysinfo">
+      <div class="panel-header" style="padding:0 0 6px;border:none">⚙ System</div>
+      <div class="info-row"><span class="info-label">OS</span><span class="info-val">DoktorOS 1.0</span></div>
+      <div class="info-row"><span class="info-label">Arch</span><span class="info-val">x86_64</span></div>
+      <div class="info-row"><span class="info-label">Shell</span><span class="info-val">bash 5.2.21</span></div>
+      <div class="info-row"><span class="info-label">CPU</span><span class="info-val">8× @ 3.2GHz</span></div>
+      CPU
+      <div class="bar-wrap"><div class="bar-fill" id="cpu-bar" style="background:var(--accent);width:12%"></div></div>
+      Memory
+      <div class="bar-wrap"><div class="bar-fill" id="mem-bar" style="background:var(--accent2);width:5%"></div></div>
+      Disk
+      <div class="bar-wrap"><div class="bar-fill" id="disk-bar" style="background:var(--orange);width:24%"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  VIRTUAL FILE SYSTEM
+// ═══════════════════════════════════════════
+const FS = {
+  '/': { type:'dir', children:['bin','boot','dev','etc','home','lib','opt','proc','root','sys','tmp','usr','var'] },
+  '/bin': { type:'dir', children:['bash','cat','chmod','cp','echo','grep','ls','mkdir','mv','python3','rm','touch','which'] },
+  '/boot': { type:'dir', children:['vmlinuz-6.8.0-doktoros','initrd.img','grub'] },
+  '/dev': { type:'dir', children:['null','zero','random','sda','sda1','sda2','tty0','tty1'] },
+  '/etc': { type:'dir', children:['doktoros-release','fstab','hosts','hostname','passwd','shadow','group','ssh','apt','profile','bash.bashrc'] },
+  '/etc/doktoros-release': { type:'file', content:'PRETTY_NAME="DoktorOS 1.0 LTS"\nNAME="DoktorOS"\nVERSION_ID="1.0"\nVERSION="1.0 (Anthropic)"\nID=doktoros\nID_LIKE=debian\nHOME_URL="https://claude.ai"\nSUPPORT_URL="https://claude.ai"\nKERNEL=6.8.0-doktoros\n' },
+  '/etc/hostname': { type:'file', content:'doktoros\n' },
+  '/etc/hosts': { type:'file', content:'127.0.0.1\tlocalhost\n127.0.1.1\tdoktoros\n::1\t\tlocalhost ip6-localhost\n' },
+  '/etc/passwd': { type:'file', content:'root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:DoktorOS User:/home/user:/bin/bash\n' },
+  '/etc/profile': { type:'file', content:'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nexport LANG=en_US.UTF-8\nexport EDITOR=nano\n' },
+  '/home': { type:'dir', children:['user'] },
+  '/home/user': { type:'dir', children:['Desktop','Documents','Downloads','Music','Pictures','projects','.bashrc','.bash_history','.profile'] },
+  '/home/user/.bashrc': { type:'file', content:'# ~/.bashrc\nexport PS1="\\u@\\h:\\w\\$ "\nexport HISTSIZE=10000\nalias ll="ls -alF"\nalias la="ls -A"\nalias l="ls -CF"\nalias grep="grep --color=auto"\n' },
+  '/home/user/projects': { type:'dir', children:['hello.py','hello.js','hello.c','hello.go','hello.rs','hello.rb','hello.java','hello.sh','Makefile','README.md'] },
+  '/home/user/projects/hello.py': { type:'file', exec:false, content:'#!/usr/bin/env python3\n# Python 3.12 — DoktorOS\n\ndef greet(name: str) -> str:\n    return f"Hello from Python 3.12, {name}! 🐍"\n\nif __name__ == "__main__":\n    print(greet("DoktorOS"))\n    print(f"Python is ready: sum([1..100]) = {sum(range(1, 101))}")\n' },
+  '/home/user/projects/hello.js': { type:'file', content:'#!/usr/bin/env node\n// Node.js 22 — DoktorOS\n\nconst greet = (name) => `Hello from Node.js 22, ${name}! 🟨`;\n\nconsole.log(greet("DoktorOS"));\nconsole.log("Async ready:", await Promise.resolve("✓ ES2024 supported"));\n' },
+  '/home/user/projects/hello.c': { type:'file', content:'/* C17 — GCC 13 — DoktorOS */\n#include <stdio.h>\n#include <stdlib.h>\n\nint main(void) {\n    printf("Hello from C17, DoktorOS! ⚙\\n");\n    printf("GCC 13 with -O2 optimization\\n");\n    return EXIT_SUCCESS;\n}\n' },
+  '/home/user/projects/hello.go': { type:'file', content:'// Go 1.22 — DoktorOS\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello from Go 1.22, DoktorOS! 🔵")\n    ch := make(chan string, 1)\n    go func() { ch <- "goroutine: ✓" }()\n    fmt.Println(<-ch)\n}\n' },
+  '/home/user/projects/hello.rs': { type:'file', content:'// Rust 1.78 — DoktorOS\nfn main() {\n    println!("Hello from Rust 1.78, DoktorOS! 🦀");\n    let nums: Vec<i32> = (1..=5).collect();\n    let sum: i32 = nums.iter().sum();\n    println!("Sum 1..5 = {}", sum);\n}\n' },
+  '/home/user/projects/hello.rb': { type:'file', content:'#!/usr/bin/env ruby\n# Ruby 3.3 — DoktorOS\n\ndef greet(name)\n  "Hello from Ruby 3.3, #{name}! 💎"\nend\n\nputs greet("DoktorOS")\nputs (1..5).map { |n| n ** 2 }.inspect\n' },
+  '/home/user/projects/hello.java': { type:'file', content:'// Java 21 LTS — DoktorOS\npublic class hello {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java 21, DoktorOS! ☕");\n        var nums = new int[]{1,2,3,4,5};\n        int sum = 0;\n        for (var n : nums) sum += n;\n        System.out.println("Sum = " + sum);\n    }\n}\n' },
+  '/home/user/projects/hello.sh': { type:'file', exec:true, content:'#!/bin/bash\n# Bash 5.2 — DoktorOS\necho "Hello from Bash 5.2, DoktorOS! 🐚"\necho "Running on: $(uname -sr)"\nfor lang in Python JavaScript C Go Rust Ruby Java; do\n    echo "  ✓ $lang installed"\ndone\n' },
+  '/home/user/projects/README.md': { type:'file', content:'# DoktorOS — Language Showcase\n\n## Pre-installed Languages\n\n| Language   | Version | File       |\n|------------|---------|------------|\n| Python     | 3.12    | hello.py   |\n| JavaScript | Node 22 | hello.js   |\n| C          | C17     | hello.c    |\n| Go         | 1.22    | hello.go   |\n| Rust       | 1.78    | hello.rs   |\n| Ruby       | 3.3     | hello.rb   |\n| Java       | 21 LTS  | hello.java |\n| Bash       | 5.2     | hello.sh   |\n\n## Build\n    make all\n' },
+  '/home/user/projects/Makefile': { type:'file', content:'.PHONY: all clean\n\nall:\n\t@echo "Building all projects..."\n\tgcc -O2 -std=c17 hello.c -o hello_c\n\tgo build -o hello_go hello.go\n\trustc -C opt-level=2 hello.rs -o hello_rs\n\tjavac hello.java\n\t@echo "Build complete ✓"\n\nclean:\n\trm -f hello_c hello_go hello_rs hello.class\n' },
+  '/home/user/Desktop': { type:'dir', children:[] },
+  '/home/user/Documents': { type:'dir', children:['notes.txt'] },
+  '/home/user/Documents/notes.txt': { type:'file', content:'DoktorOS Notes\n==============\nThis is a fully simulated Linux environment.\nTry: help, ls, cat, pwd, python3, node, etc.\n' },
+  '/home/user/Downloads': { type:'dir', children:[] },
+  '/home/user/Music': { type:'dir', children:[] },
+  '/home/user/Pictures': { type:'dir', children:[] },
+  '/home/user/.bash_history': { type:'file', content:'ls -la\ncd projects\npython3 hello.py\nnode hello.js\ngcc hello.c -o hello && ./hello\nmake all\n' },
+  '/lib': { type:'dir', children:['x86_64-linux-gnu','systemd','modules'] },
+  '/opt': { type:'dir', children:['rust','go','nvm','jdk-21'] },
+  '/opt/rust': { type:'dir', children:['bin','lib'] },
+  '/opt/go': { type:'dir', children:['bin','src','pkg'] },
+  '/opt/jdk-21': { type:'dir', children:['bin','lib','include'] },
+  '/proc': { type:'dir', children:['1','cpuinfo','meminfo','version','uptime','net'] },
+  '/proc/version': { type:'file', content:'Linux version 6.8.0-doktoros (gcc (Ubuntu 13.2.0) 13.2.0) #1 SMP DoktorOS 1.0\n' },
+  '/proc/cpuinfo': { type:'file', content:'processor\t: 0\nmodel name\t: DoktorOS Virtual CPU @ 3.2GHz\ncpu cores\t: 8\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep\n' },
+  '/proc/meminfo': { type:'file', content:'MemTotal:\t8388608 kB\nMemFree:\t7963012 kB\nMemAvailable:\t7814560 kB\nBuffers:\t  82144 kB\nCached:\t\t 289332 kB\n' },
+  '/root': { type:'dir', children:['.bashrc','.profile'] },
+  '/sys': { type:'dir', children:['block','class','devices','kernel'] },
+  '/tmp': { type:'dir', children:[] },
+  '/usr': { type:'dir', children:['bin','include','lib','local','share'] },
+  '/usr/bin': { type:'dir', children:['awk','curl','diff','find','gcc','git','go','java','javac','make','nano','node','npm','perl','pip3','python3','ruby','rustc','sed','ssh','tar','vim','wget','zip'] },
+  '/usr/local': { type:'dir', children:['bin','lib','share'] },
+  '/var': { type:'dir', children:['cache','lib','log','run','tmp'] },
+  '/var/log': { type:'dir', children:['syslog','auth.log','apt','kern.log'] },
+  '/var/log/syslog': { type:'file', content:'May  5 00:00:01 doktoros kernel: DoktorOS 1.0 LTS booting...\nMay  5 00:00:02 doktoros systemd: Starting system...\nMay  5 00:00:03 doktoros systemd: Reached target Multi-User System.\nMay  5 00:00:04 doktoros login: User "user" logged in on tty1\n' },
+};
+
+// Installed packages registry
+const PACKAGES = {
+  python3: { ver:'3.12.3', size:'25.4MB', desc:'Python interpreter', installed:true },
+  nodejs: { ver:'22.1.0', size:'40.2MB', desc:'JavaScript runtime', installed:true },
+  gcc: { ver:'13.2.0', size:'18.7MB', desc:'GNU C/C++ compiler', installed:true },
+  golang: { ver:'1.22.2', size:'68.1MB', desc:'Go programming language', installed:true },
+  rustc: { ver:'1.78.0', size:'82.3MB', desc:'Rust compiler', installed:true },
+  ruby: { ver:'3.3.1', size:'12.1MB', desc:'Ruby interpreter', installed:true },
+  java: { ver:'21.0.3', size:'184MB', desc:'Java 21 LTS runtime', installed:true },
+  bash: { ver:'5.2.21', size:'1.2MB', desc:'GNU Bash shell', installed:true },
+  git: { ver:'2.44.0', size:'8.3MB', desc:'Distributed version control', installed:true },
+  vim: { ver:'9.1.0', size:'3.8MB', desc:'Vi IMproved text editor', installed:true },
+  nano: { ver:'7.2', size:'0.9MB', desc:'Simple text editor', installed:true },
+  curl: { ver:'8.7.1', size:'2.3MB', desc:'HTTP client', installed:true },
+  wget: { ver:'1.21.4', size:'1.8MB', desc:'Web file downloader', installed:true },
+  make: { ver:'4.3', size:'0.8MB', desc:'Build automation tool', installed:true },
+  pip3: { ver:'24.0', size:'2.1MB', desc:'Python package manager', installed:true },
+  npm: { ver:'10.7.0', size:'6.5MB', desc:'Node package manager', installed:true },
+  perl: { ver:'5.38.2', size:'14.2MB', desc:'Perl interpreter', installed:true },
+  htop: { ver:'3.3.0', size:'0.4MB', desc:'Interactive process viewer', installed:false },
+  neofetch: { ver:'7.1.0', size:'0.2MB', desc:'System info tool', installed:false },
+  tmux: { ver:'3.4', size:'0.7MB', desc:'Terminal multiplexer', installed:false },
+  docker: { ver:'26.1.1', size:'245MB', desc:'Container runtime', installed:false },
+  nginx: { ver:'1.26.0', size:'3.2MB', desc:'Web server', installed:false },
+  postgresql: { ver:'16.3', size:'48MB', desc:'PostgreSQL database', installed:false },
+  redis: { ver:'7.2.4', size:'4.1MB', desc:'In-memory data store', installed:false },
+  php: { ver:'8.3.6', size:'16.8MB', desc:'PHP interpreter', installed:false },
+  lua: { ver:'5.4.6', size:'0.8MB', desc:'Lua interpreter', installed:false },
+  kotlin: { ver:'2.0.0', size:'92MB', desc:'Kotlin compiler', installed:false },
+  scala: { ver:'3.4.1', size:'110MB', desc:'Scala compiler', installed:false },
+  swift: { ver:'5.10', size:'220MB', desc:'Swift compiler', installed:false },
+  haskell: { ver:'9.8.2', size:'340MB', desc:'GHC Haskell compiler', installed:false },
+  elixir: { ver:'1.16.3', size:'28MB', desc:'Elixir language', installed:false },
+};
+
+// ═══════════════════════════════════════════
+//  SHELL STATE
+// ═══════════════════════════════════════════
+let cwd = '/home/user';
+let user = 'user';
+let hostname = 'doktoros';
+let history = [];
+let histIdx = -1;
+let envVars = { HOME:'/home/user', USER:'user', SHELL:'/bin/bash', TERM:'xterm-256color', LANG:'en_US.UTF-8', PATH:'/usr/local/bin:/usr/bin:/bin' };
+let tabs = [{ title:'terminal', cwd:'/home/user' }];
+let activeTab = 0;
+
+function resolvePath(p) {
+  if (!p) return cwd;
+  if (p === '~') return '/home/user';
+  if (p.startsWith('~/')) p = '/home/user' + p.slice(1);
+  if (!p.startsWith('/')) {
+    // relative
+    let base = cwd.endsWith('/') ? cwd : cwd + '/';
+    p = base + p;
+  }
+  // normalize
+  let parts = p.split('/').filter(Boolean);
+  let stack = [];
+  for (let part of parts) {
+    if (part === '.') continue;
+    if (part === '..') { stack.pop(); }
+    else stack.push(part);
+  }
+  return '/' + stack.join('/');
+}
+
+function getNode(path) { return FS[path] || null; }
+
+function promptStr() {
+  let dir = cwd === '/home/user' ? '~' : cwd.replace('/home/user','~');
+  return { user, hostname, dir };
+}
+
+// ═══════════════════════════════════════════
+//  OUTPUT HELPERS
+// ═══════════════════════════════════════════
+const out = document.getElementById('output');
+
+function printPrompt(cmd) {
+  const p = promptStr();
+  const div = document.createElement('div');
+  div.className = 'prompt-line';
+  div.innerHTML =
+    `<span class="ps-user">${p.user}</span><span class="ps-at">@</span><span class="ps-host">${p.hostname}</span><span class="ps-colon">:</span><span class="ps-dir">${p.dir}</span><span class="ps-dollar">$</span><span class="ps-cmd"> ${escHtml(cmd)}</span>`;
+  out.appendChild(div);
+}
+
+function printLine(html, cls='out-line') {
+  const div = document.createElement('div');
+  div.className = cls;
+  div.innerHTML = html;
+  out.appendChild(div);
+}
+
+function print(text, color='') {
+  const lines = String(text).split('\n');
+  for (let ln of lines) {
+    const div = document.createElement('div');
+    div.className = 'out-line';
+    div.innerHTML = color ? `<span class="${color}">${escHtml(ln)}</span>` : escHtml(ln);
+    out.appendChild(div);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function scrollBottom() { out.scrollTop = out.scrollHeight; }
+
+function updateLivePrompt() {
+  const p = promptStr();
+  document.getElementById('live-prompt').innerHTML =
+    `<span class="ps-user">${p.user}</span><span class="ps-at">@</span><span class="ps-host">${p.hostname}</span><span class="ps-colon">:</span><span class="ps-dir">${p.dir}</span><span class="ps-dollar">$</span>`;
+}
+
+//
+//  COMMANDS 
+const CMDS = {
+
+  help(args) {
+    printLine(`<span class="c-accent c-bold">DoktorOS 1.0 — Available Commands</span>`);
+    printLine('');
+    const groups = [
+      ['Navigation',  'cd, ls, ll, la, pwd, find'],
+      ['Files',       'cat, touch, mkdir, rm, cp, mv, echo, head, tail, wc, grep, diff'],
+      ['System',      'uname, whoami, id, hostname, uptime, date, ps, kill, top, free, df, du'],
+      ['Languages',   'python3, node, gcc, go, rustc, ruby, java, javac, perl, bash'],
+      ['Packages',    'apt, apt-get, pip3, npm, cargo, gem'],
+      ['Network',     'ping, curl, wget, ifconfig, netstat, ssh'],
+      ['Info',        'man, which, file, stat, env, export, history, alias'],
+      ['Misc',        'clear, neofetch, lolcat, fortune, cowsay, sl, yes, cal, bc'],
+    ];
+    for (const [grp, cmds] of groups) {
+      printLine(`  <span class="c-yellow c-bold">${grp.padEnd(12)}</span><span class="c-dim">${cmds}</span>`);
+    }
+    printLine('');
+    printLine(`<span class="c-dim">Tip: try <span class="c-cyan">neofetch</span>, <span class="c-cyan">python3 ~/projects/hello.py</span>, or <span class="c-cyan">apt list --installed</span></span>`);
+  },
+
+  ls(args) {
+    const flags = args.filter(a=>a.startsWith('-')).join('');
+    const target = args.filter(a=>!a.startsWith('-'))[0] || cwd;
+    const path = resolvePath(target);
+    const node = getNode(path);
+    if (!node) { print(`ls: cannot access '${target}': No such file or directory`,'c-red'); return; }
+    if (node.type === 'file') { print(path.split('/').pop()); return; }
+    const children = node.children || [];
+    if (flags.includes('l') || flags.includes('a')) {
+      if (flags.includes('l')) {
+        printLine(`<span class="c-dim">total ${children.length * 4}</span>`);
+        const items = flags.includes('a') ? ['.','..', ...children] : children;
+        for (const name of items) {
+          const childPath = path === '/' ? `/${name}` : `${path}/${name}`;
+          const child = FS[childPath];
+          const isDir = !child || child.type === 'dir';
+          const isExec = child && child.exec;
+          const perm = isDir ? 'drwxr-xr-x' : (isExec ? '-rwxr-xr-x' : '-rw-r--r--');
+          const size = child?.content?.length || Math.floor(Math.random()*4096+512);
+          const date = 'May  5 00:00';
+          let cls = isDir ? 'c-cyan' : (isExec ? 'c-green' : 'c-white');
+          printLine(`<span class="c-dim">${perm} 1 user user ${String(size).padStart(6)} ${date} </span><span class="${cls}">${escHtml(name)}${isDir?'/':''}</span>`);
+        }
+      }
+    } else {
+      const cols = 5;
+      const items = children.filter(n => flags.includes('a') || !n.startsWith('.'));
+      let row = '';
+      items.forEach((name, i) => {
+        const childPath = path === '/' ? `/${name}` : `${path}/${name}`;
+        const child = FS[childPath];
+        const isDir = !child || child.type === 'dir';
+        const isExec = child?.exec;
+        let cls = isDir ? 'c-cyan' : (isExec ? 'c-green' : 'c-white');
+        row += `<span class="${cls}">${escHtml(name)}${isDir?'/':''}</span>  `;
+        if ((i+1) % cols === 0 || i === items.length-1) {
+          printLine(row);
+          row = '';
+        }
+      });
+    }
+  },
+
+  ll(args) { CMDS.ls(['-la', ...args]); },
+  la(args) { CMDS.ls(['-a',  ...args]); },
+
+  cd(args) {
+    const target = args[0] || '/home/user';
+    const path = resolvePath(target);
+    const node = getNode(path);
+    if (!node) { print(`bash: cd: ${target}: No such file or directory`,'c-red'); return; }
+    if (node.type !== 'dir') { print(`bash: cd: ${target}: Not a directory`,'c-red'); return; }
+    cwd = path;
+    updateLivePrompt();
+    buildFileTree();
+  },
+
+  pwd() { print(cwd); },
+
+  cat(args) {
+    if (!args.length) { print('cat: missing operand','c-red'); return; }
+    for (const a of args) {
+      const path = resolvePath(a);
+      const node = getNode(path);
+      if (!node) { print(`cat: ${a}: No such file or directory`,'c-red'); continue; }
+      if (node.type === 'dir') { print(`cat: ${a}: Is a directory`,'c-red'); continue; }
+      print(node.content || '(empty)');
+    }
+  },
+
+  head(args) {
+    const n = args.includes('-n') ? parseInt(args[args.indexOf('-n')+1])||10 : 10;
+    const file = args.filter(a=>!a.startsWith('-'))[0];
+    if (!file) { print('head: missing file','c-red'); return; }
+    const node = getNode(resolvePath(file));
+    if (!node || node.type==='dir') { print(`head: ${file}: No such file or directory`,'c-red'); return; }
+    (node.content||'').split('\n').slice(0,n).forEach(l=>print(l));
+  },
+
+  tail(args) {
+    const n = args.includes('-n') ? parseInt(args[args.indexOf('-n')+1])||10 : 10;
+    const file = args.filter(a=>!a.startsWith('-'))[0];
+    if (!file) { print('tail: missing file','c-red'); return; }
+    const node = getNode(resolvePath(file));
+    if (!node || node.type==='dir') { print(`tail: ${file}: No such file or directory`,'c-red'); return; }
+    const lines = (node.content||'').split('\n');
+    lines.slice(-n).forEach(l=>print(l));
+  },
+
+  touch(args) {
+    if (!args.length) { print('touch: missing file operand','c-red'); return; }
+    for (const a of args) {
+      const path = resolvePath(a);
+      if (!FS[path]) {
+        FS[path] = { type:'file', content:'' };
+        const parent = path.substring(0, path.lastIndexOf('/')) || '/';
+        const name = path.split('/').pop();
+        if (FS[parent]) { FS[parent].children = [...(FS[parent].children||[]), name]; }
+      }
+    }
+    buildFileTree();
+  },
+
+  mkdir(args) {
+    const flags = args.filter(a=>a.startsWith('-'));
+    const dirs  = args.filter(a=>!a.startsWith('-'));
+    if (!dirs.length) { print('mkdir: missing operand','c-red'); return; }
+    for (const a of dirs) {
+      const path = resolvePath(a);
+      if (FS[path]) { print(`mkdir: cannot create directory '${a}': File exists`,'c-red'); continue; }
+      FS[path] = { type:'dir', children:[] };
+      const parent = path.substring(0, path.lastIndexOf('/')) || '/';
+      const name = path.split('/').pop();
+      if (FS[parent]) FS[parent].children = [...(FS[parent].children||[]), name];
+    }
+    buildFileTree();
+  },
+
+  rm(args) {
+    const flags = args.filter(a=>a.startsWith('-')).join('');
+    const files = args.filter(a=>!a.startsWith('-'));
+    for (const a of files) {
+      const path = resolvePath(a);
+      const node = FS[path];
+      if (!node) { print(`rm: cannot remove '${a}': No such file or directory`,'c-red'); continue; }
+      if (node.type==='dir' && !flags.includes('r')) { print(`rm: cannot remove '${a}': Is a directory`,'c-red'); continue; }
+      delete FS[path];
+      const parent = path.substring(0, path.lastIndexOf('/')) || '/';
+      const name = path.split('/').pop();
+      if (FS[parent]) FS[parent].children = (FS[parent].children||[]).filter(c=>c!==name);
+    }
+    buildFileTree();
+  },
+
+  cp(args) {
+    if (args.length < 2) { print('cp: missing destination file operand','c-red'); return; }
+    const src = resolvePath(args[0]);
+    const dst = resolvePath(args[args.length-1]);
+    const node = FS[src];
+    if (!node) { print(`cp: cannot stat '${args[0]}': No such file or directory`,'c-red'); return; }
+    if (node.type==='file') {
+      FS[dst] = { ...node };
+      const parent = dst.substring(0, dst.lastIndexOf('/')) || '/';
+      const name = dst.split('/').pop();
+      if (FS[parent]) FS[parent].children = [...new Set([...(FS[parent].children||[]), name])];
+    }
+    buildFileTree();
+  },
+
+  mv(args) {
+    if (args.length < 2) { print('mv: missing destination','c-red'); return; }
+    CMDS.cp(args);
+    CMDS.rm([args[0]]);
+  },
+
+  echo(args) {
+    let text = args.join(' ');
+    // handle env var substitution
+    text = text.replace(/\$([A-Z_]+)/g, (_,k) => envVars[k] || '');
+    print(text);
+  },
+
+  grep(args) {
+    const flags = args.filter(a=>a.startsWith('-')).join('');
+    const rest  = args.filter(a=>!a.startsWith('-'));
+    if (rest.length < 1) { print('grep: usage: grep [options] pattern [file...]','c-red'); return; }
+    const pattern = rest[0];
+    const files = rest.slice(1);
+    const regex = new RegExp(pattern, flags.includes('i') ? 'i' : '');
+    if (!files.length) { print(`grep: pattern '${pattern}' (no files)`,'c-dim'); return; }
+    for (const f of files) {
+      const node = FS[resolvePath(f)];
+      if (!node || node.type==='dir') { print(`grep: ${f}: No such file or directory`,'c-red'); continue; }
+      const lines = (node.content||'').split('\n');
+      lines.forEach((ln,i) => {
+        if (regex.test(ln)) {
+          if (files.length > 1) printLine(`<span class="c-purple">${escHtml(f)}:</span><span class="c-yellow">${i+1}:</span>${escHtml(ln).replace(new RegExp(escHtml(pattern),'gi'),m=>`<span class="c-red c-bold">${m}</span>`)}`);
+          else printLine(escHtml(ln).replace(new RegExp(escHtml(pattern),'gi'),m=>`<span class="c-red c-bold">${m}</span>`));
+        }
+      });
+    }
+  },
+
+  wc(args) {
+    const files = args.filter(a=>!a.startsWith('-'));
+    for (const f of files) {
+      const node = FS[resolvePath(f)];
+      if (!node || node.type==='dir') { print(`wc: ${f}: No such file or directory`,'c-red'); continue; }
+      const content = node.content || '';
+      const lines = content.split('\n').length;
+      const words = content.trim().split(/\s+/).filter(Boolean).length;
+      const bytes = content.length;
+      printLine(`<span class="c-cyan">${String(lines).padStart(6)} ${String(words).padStart(6)} ${String(bytes).padStart(6)}</span> ${escHtml(f)}`);
+    }
+  },
+
+  find(args) {
+    const dir = args[0] ? resolvePath(args[0]) : cwd;
+    const nameFlag = args.indexOf('-name');
+    const pattern = nameFlag >= 0 ? args[nameFlag+1] : null;
+    function walk(p) {
+      const node = FS[p];
+      if (!node) return;
+      const base = p.split('/').pop() || '/';
+      if (!pattern || base.includes(pattern.replace(/\*/g,''))) print(p);
+      if (node.type==='dir') for (const child of node.children||[]) walk(p==='/'?`/${child}`:`${p}/${child}`);
+    }
+    walk(dir);
+  },
+
+  uname(args) {
+    const flags = args.join('');
+    if (flags.includes('a')) {
+      print('Linux doktoros 6.8.0-doktoros #1 SMP Mon May 5 00:00:00 UTC 2025 x86_64 GNU/Linux');
+    } else if (flags.includes('r')) { print('6.8.0-doktoros'); }
+    else if (flags.includes('s')) { print('Linux'); }
+    else { print('Linux'); }
+  },
+
+  whoami() { print(user); },
+  id()     { print(`uid=1000(${user}) gid=1000(${user}) groups=1000(${user}),4(adm),27(sudo),1001(docker)`); },
+  hostname(){ print(hostname); },
+
+  uptime() {
+    const s = Math.floor((Date.now()-startTime)/1000);
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+    const load = (Math.random()*0.5+0.05).toFixed(2);
+    print(` ${new Date().toTimeString().slice(0,8)} up ${h}:${String(m).padStart(2,'0')}, 1 user,  load average: ${load}, ${(load*0.9).toFixed(2)}, ${(load*0.8).toFixed(2)}`);
+  },
+
+  date(){ print(new Date().toString()); },
+
+  ps(args) {
+    const flags = args.join('');
+    printLine(`<span class="c-yellow">  PID TTY          TIME CMD</span>`);
+    PROCESSES.filter(p=> flags.includes('a') || p.user===user).forEach(p => {
+      printLine(`<span class="c-cyan">${String(p.pid).padStart(5)}</span> <span class="c-dim">pts/0    </span><span class="c-dim">00:00:${String(Math.floor(p.cpu)).padStart(2,'0')}</span> <span class="c-white">${p.cmd}</span>`);
+    });
+  },
+
+  kill(args) {
+    const sig = args.find(a=>a.startsWith('-'))?.slice(1) || '15';
+    const pids = args.filter(a=>!a.startsWith('-')).map(Number);
+    for (const pid of pids) {
+      const idx = PROCESSES.findIndex(p=>p.pid===pid);
+      if (idx < 0) { print(`bash: kill: (${pid}) - No such process`,'c-red'); }
+      else { PROCESSES.splice(idx,1); print(`[1]+  Terminated              (pid ${pid})`,'c-yellow'); }
+    }
+  },
+
+  top() {
+    printLine(`<span class="c-accent c-bold">DoktorOS top — Tasks: ${PROCESSES.length} total, 1 running</span>`);
+    printLine(`<span class="c-dim">%Cpu(s): ${(Math.random()*15+2).toFixed(1)} us,  ${(Math.random()*3).toFixed(1)} sy,  0.0 ni, ${(Math.random()*5+75).toFixed(1)} id</span>`);
+    printLine(`<span class="c-dim">MiB Mem :  8192.0 total,  7808.3 free,   312.2 used,    71.5 buff</span>`);
+    printLine('');
+    printLine(`<span class="c-yellow">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND</span>`);
+    PROCESSES.slice(0,12).forEach(p => {
+      printLine(`<span class="c-cyan">${String(p.pid).padStart(5)}</span> <span class="c-green">${p.user.padEnd(9)}</span><span class="c-dim"> 20   0 ${String(p.mem+'m').padStart(7)} ${String(Math.floor(p.mem/4)+'m').padStart(6)} ${String(Math.floor(p.mem/8)+'m').padStart(6)} S ${String(p.cpu.toFixed(1)).padStart(5)} ${(p.mem/81.92).toFixed(1).padStart(5)} ${p.time}</span> <span class="c-white">${p.cmd}</span>`);
+    });
+  },
+
+  free(args) {
+    printLine(`<span class="c-yellow">               total        used        free      shared  buff/cache   available</span>`);
+    printLine(`<span class="c-white">Mem:         </span><span class="c-cyan">8388608</span>      <span class="c-red">421892</span>     <span class="c-green">7523048</span>       <span class="c-dim">4096</span>      <span class="c-dim">443668</span>     <span class="c-green">7726716</span>`);
+    printLine(`<span class="c-white">Swap:        </span><span class="c-cyan">2097152</span>           <span class="c-dim">0</span>     <span class="c-green">2097152</span>`);
+  },
+
+  df(args) {
+    printLine(`<span class="c-yellow">Filesystem      Size  Used Avail Use% Mounted on</span>`);
+    printLine(`<span class="c-white">/dev/sda1        50G   12G   36G  25% /</span>`);
+    printLine(`<span class="c-white">/dev/sda2       200G   48G  140G  26% /home</span>`);
+    printLine(`<span class="c-dim">tmpfs           4.0G     0  4.0G   0% /dev/shm</span>`);
+    printLine(`<span class="c-dim">tmpfs           1.6G  1.2M  1.6G   1% /run</span>`);
+  },
+
+  du(args) {
+    const target = args.filter(a=>!a.startsWith('-'))[0] || cwd;
+    print(`4.0K\t${resolvePath(target)}`);
+  },
+
+  env() {
+    for (const [k,v] of Object.entries(envVars)) printLine(`<span class="c-cyan">${k}</span>=<span class="c-yellow">${escHtml(v)}</span>`);
+  },
+
+  export(args) {
+    for (const a of args) {
+      const [k,v] = a.split('=');
+      if (k && v !== undefined) envVars[k] = v;
+    }
+  },
+
+  history() {
+    history.forEach((cmd,i) => printLine(`<span class="c-dim">${String(i+1).padStart(4)}</span>  ${escHtml(cmd)}`));
+  },
+
+  which(args) {
+    for (const a of args) {
+      const bins = ['/usr/bin','/bin','/usr/local/bin'];
+      const found = bins.find(b => FS[b] && (FS[b].children||[]).includes(a));
+      if (found) print(`${found}/${a}`);
+      else print(`which: no ${a} in (${bins.join(':')})`, 'c-red');
+    }
+  },
+
+  file(args) {
+    for (const a of args) {
+      const node = FS[resolvePath(a)];
+      if (!node) { print(`${a}: cannot open '${a}' (No such file or directory)`,'c-red'); continue; }
+      if (node.type==='dir') print(`${a}: directory`);
+      else if (node.exec) print(`${a}: ELF 64-bit LSB executable, x86-64`);
+      else print(`${a}: ASCII text`);
+    }
+  },
+
+  stat(args) {
+    for (const a of args) {
+      const path = resolvePath(a);
+      const node = FS[path];
+      if (!node) { print(`stat: cannot stat '${a}': No such file or directory`,'c-red'); continue; }
+      const size = node.content?.length || 4096;
+      printLine(`<span class="c-dim">  File:</span> <span class="c-white">${escHtml(a)}</span>`);
+      printLine(`<span class="c-dim">  Size:</span> <span class="c-cyan">${size}</span>\t\t<span class="c-dim">Blocks: ${Math.ceil(size/512)}</span>`);
+      printLine(`<span class="c-dim">  Type:</span> <span class="c-yellow">${node.type==='dir'?'directory':'regular file'}</span>`);
+      printLine(`<span class="c-dim">Access:</span> <span class="c-white">${node.type==='dir'?'drwxr-xr-x':'-rw-r--r--'}</span>`);
+    }
+  },
+
+  clear() { out.innerHTML = ''; },
+
+  python3(args) {
+    if (!args.length) { print('[Python 3.12.3 interactive — type exit() to quit]','c-yellow'); return; }
+    const file = args[0];
+    const node = FS[resolvePath(file)];
+    if (!node || node.type==='dir') { print(`python3: can't open file '${file}': [Errno 2] No such file or directory`,'c-red'); return; }
+    simulateRun('python3', file, node.content);
+  },
+
+  node(args) {
+    if (!args.length) { print('[Node.js v22.1.0 REPL — .exit to quit]','c-yellow'); return; }
+    const file = args[0];
+    const node = FS[resolvePath(file)];
+    if (!node || node.type==='dir') { print(`Error: Cannot find module '${file}'`,'c-red'); return; }
+    simulateRun('node', file, node.content);
+  },
+
+  gcc(args) {
+    const files = args.filter(a=>!a.startsWith('-'));
+    const outFlag = args.indexOf('-o') >= 0 ? args[args.indexOf('-o')+1] : 'a.out';
+    if (!files.length) { print('gcc: fatal error: no input files','c-red'); return; }
+    print(`[gcc 13.2.0: compiling ${files.join(', ')} → ${outFlag}]`, 'c-dim');
+    setTimeout(()=>{ print(`✓ Build succeeded: ./${outFlag}`,'c-green'); },300);
+  },
+
+  go(args) {
+    if (!args.length) { print('usage: go <command> [arguments]','c-dim'); return; }
+    if (args[0]==='run' && args[1]) {
+      const node = FS[resolvePath(args[1])];
+      if (!node) { print(`can't load package: package ${args[1]}: no such file`,'c-red'); return; }
+      simulateRun('go', args[1], node.content);
+    } else if (args[0]==='build') {
+      print('[go 1.22.2: building...]','c-dim');
+      setTimeout(()=>print('✓ Build succeeded','c-green'),300);
+    } else if (args[0]==='version') { print('go version go1.22.2 linux/amd64'); }
+    else { print(`go: unknown command ${args[0]}`,'c-red'); }
+  },
+
+  rustc(args) {
+    const files = args.filter(a=>!a.startsWith('-'));
+    if (!files.length) { print('error: no input files given','c-red'); return; }
+    print(`[rustc 1.78.0 (2024 edition): compiling ${files[0]}]`,'c-dim');
+    setTimeout(()=>print('✓ Compiled successfully','c-green'),400);
+  },
+
+  ruby(args) {
+    if (!args.length) { print('[Ruby 3.3.1 irb — exit to quit]','c-yellow'); return; }
+    const node = FS[resolvePath(args[0])];
+    if (!node) { print(`ruby: No such file or directory -- ${args[0]}`,'c-red'); return; }
+    simulateRun('ruby', args[0], node.content);
+  },
+
+  java(args) {
+    if (!args.length) { print('Usage: java [options] <mainclass> [args...]','c-dim'); return; }
+    print(`[Java 21 LTS: running ${args[0]}]`,'c-dim');
+    print('Hello from Java 21, DoktorOS! ☕');
+    print('Sum = 15');
+  },
+
+  javac(args) {
+    if (!args.length) { print('Usage: javac [options] <source files>','c-dim'); return; }
+    print(`[javac 21: compiling ${args[0]}]`,'c-dim');
+    setTimeout(()=>print(`✓ ${args[0]} compiled to ${args[0].replace('.java','.class')}`,'c-green'),200);
+  },
+
+  perl(args) {
+    if (!args.length) { print('[Perl 5.38.2 — exit to quit]','c-yellow'); return; }
+    print('Hello from Perl 5.38.2, DoktorOS! 🐪');
+  },
+
+  bash(args) {
+    if (!args.length) { print('[bash 5.2.21 subshell]','c-dim'); return; }
+    const node = FS[resolvePath(args[0])];
+    if (!node) { print(`bash: ${args[0]}: No such file or directory`,'c-red'); return; }
+    simulateRun('bash', args[0], node.content);
+  },
+
+  make(args) {
+    const target = args[0] || 'all';
+    const mf = FS[`${cwd}/Makefile`] || FS[resolvePath('Makefile')];
+    if (!mf) { print(`make: *** No targets specified and no makefile found.`,'c-red'); return; }
+    print(`make: Entering directory '${cwd}'`,'c-dim');
+    if (target === 'all') {
+      print("Building all projects...",'c-cyan');
+      setTimeout(()=>{
+        print("gcc -O2 -std=c17 hello.c -o hello_c",'c-dim');
+        print("go build -o hello_go hello.go",'c-dim');
+        print("rustc -C opt-level=2 hello.rs -o hello_rs",'c-dim');
+        print("javac hello.java",'c-dim');
+        print("Build complete ✓",'c-green');
+      },200);
+    } else if (target === 'clean') {
+      print("rm -f hello_c hello_go hello_rs hello.class",'c-dim');
+      print("Clean done ✓",'c-green');
+    } else { print(`make: *** No rule to make target '${target}'.`,'c-red'); }
+  },
+
+  git(args) {
+    const sub = args[0];
+    if (!sub) { print('usage: git <command> [<args>]','c-dim'); return; }
+    if (sub==='init') { print('Initialized empty Git repository in ' + cwd + '/.git/','c-green'); }
+    else if (sub==='status') {
+      printLine(`<span class="c-accent">On branch main</span>`);
+      printLine(`<span class="c-dim">nothing to commit, working tree clean</span>`);
+    }
+    else if (sub==='log') {
+      printLine(`<span class="c-yellow">commit a1b2c3d4e5f6789 (HEAD -> main)</span>`);
+      printLine(`<span class="c-dim">Author: ${user} <user@doktoros.local></span>`);
+      printLine(`<span class="c-dim">Date:   Mon May 5 00:00:00 2025</span>`);
+      printLine('');
+      printLine('    Initial commit');
+    }
+    else if (sub==='--version') { print('git version 2.44.0'); }
+    else { print(`[git ${args.join(' ')}]`,'c-dim'); }
+  },
+
+  ssh(args) {
+    if (!args.length) { print('usage: ssh [-p port] user@hostname','c-dim'); return; }
+    print(`ssh: connect to host ${args[0]}: Connection refused`,'c-red');
+  },
+
+  ping(args) {
+    const host = args.filter(a=>!a.startsWith('-'))[0];
+    if (!host) { print('ping: usage error: Destination address required','c-red'); return; }
+    const count = args.includes('-c') ? parseInt(args[args.indexOf('-c')+1])||4 : 4;
+    printLine(`<span class="c-dim">PING ${host}: 56 data bytes</span>`);
+    for (let i=0; i<count; i++) {
+      const ms = (Math.random()*5+10).toFixed(3);
+      printLine(`64 bytes from ${host}: icmp_seq=${i+1} ttl=64 time=<span class="c-green">${ms} ms</span>`);
+    }
+    printLine(`<span class="c-dim">--- ${host} ping statistics ---</span>`);
+    printLine(`<span class="c-white">${count} packets transmitted, ${count} received, 0% packet loss</span>`);
+  },
+
+  curl(args) {
+    const url = args.filter(a=>!a.startsWith('-'))[0];
+    if (!url) { print('curl: try \'curl --help\'','c-dim'); return; }
+    print(`[Fetching ${url}]`,'c-dim');
+    print('  % Total    % Received % Xferd  Average Speed','c-dim');
+    print('100   256  100   256    0     0   4096      0 --:--:-- --:--:--','c-dim');
+    print('{"status":"ok","message":"DoktorOS network stack active"}');
+  },
+
+  wget(args) {
+    const url = args.filter(a=>!a.startsWith('-'))[0];
+    if (!url) { print('wget: missing URL','c-red'); return; }
+    print(`--${new Date().toISOString().slice(0,19)}--  ${url}`,'c-dim');
+    print('Resolving host... connected.','c-dim');
+    print('HTTP request sent, awaiting response... 200 OK','c-green');
+    print("Saving to: '" + (url.split('/').pop() || 'index.html') + "'");
+  },
+
+  ifconfig() {
+    printLine(`<span class="c-cyan c-bold">eth0</span>: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500`);
+    printLine(`        inet <span class="c-green">192.168.1.42</span>  netmask 255.255.255.0  broadcast 192.168.1.255`);
+    printLine(`        inet6 fe80::1  prefixlen 64  scopeid 0x20`);
+    printLine(`        ether 02:42:ac:11:00:02  txqueuelen 1000`);
+    printLine('');
+    printLine(`<span class="c-cyan c-bold">lo</span>: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536`);
+    printLine(`        inet <span class="c-yellow">127.0.0.1</span>  netmask 255.0.0.0`);
+  },
+
+  apt(args) {
+    const sub = args[0];
+    if (!sub || sub==='help') {
+      printLine(`<span class="c-accent">apt 2.7.14 (amd64)</span>`);
+      printLine(`<span class="c-dim">Usage: apt [options] command</span>`);
+      printLine(`<span class="c-dim">  install, remove, update, upgrade, search, list, show</span>`);
+      return;
+    }
+    if (sub==='update') {
+      print('Hit:1 https://packages.doktoros.io focal InRelease','c-dim');
+      print('Reading package lists... Done','c-green');
+      return;
+    }
+    if (sub==='upgrade') {
+      print('Reading package lists... Done','c-dim');
+      print('Building dependency tree... Done','c-dim');
+      print('0 upgraded, 0 newly installed, 0 to remove.','c-green');
+      return;
+    }
+    if (sub==='install') {
+      const pkgName = args[1];
+      if (!pkgName) { print('apt: no package specified','c-red'); return; }
+      const pkg = PACKAGES[pkgName];
+      if (!pkg) { print(`E: Unable to locate package ${pkgName}`,'c-red'); return; }
+      if (pkg.installed) { print(`${pkgName} is already the newest version (${pkg.ver}).`,'c-dim'); return; }
+      print(`Reading package lists... Done`,'c-dim');
+      print(`The following NEW packages will be installed: ${pkgName}`,'c-white');
+      print(`0 upgraded, 1 newly installed. After install: ${pkg.size} disk space.`,'c-dim');
+      print(`Get:1 ${pkgName} ${pkg.ver} [${pkg.size}]`);
+      print(`Unpacking ${pkgName} (${pkg.ver}) ...`,'c-dim');
+      print(`Setting up ${pkgName} (${pkg.ver}) ...`,'c-dim');
+      PACKAGES[pkgName].installed = true;
+      print(`✓ ${pkgName} ${pkg.ver} installed`,'c-green');
+      return;
+    }
+    if (sub==='remove') {
+      const pkgName = args[1];
+      if (!pkgName) { print('apt: no package specified','c-red'); return; }
+      const pkg = PACKAGES[pkgName];
+      if (!pkg) { print(`E: Unable to locate package ${pkgName}`,'c-red'); return; }
+      PACKAGES[pkgName].installed = false;
+      print(`Removing ${pkgName} (${pkg.ver}) ...`,'c-dim');
+      print(`✓ ${pkgName} removed`,'c-yellow');
+      return;
+    }
+    if (sub==='list') {
+      const showInstalled = args.includes('--installed');
+      printLine(`<span class="c-dim">Listing... Done</span>`);
+      for (const [name, pkg] of Object.entries(PACKAGES)) {
+        if (showInstalled && !pkg.installed) continue;
+        const tag = pkg.installed ? '<span class="c-green">[installed]</span>' : '<span class="c-dim">[available]</span>';
+        printLine(`<span class="c-cyan">${name.padEnd(14)}</span> <span class="c-yellow">${pkg.ver.padEnd(10)}</span> ${tag} <span class="c-dim">${pkg.desc}</span>`);
+      }
+      return;
+    }
+    if (sub==='search') {
+      const q = args[1];
+      if (!q) { print('apt: must give exactly one pattern','c-red'); return; }
+      let found = false;
+      for (const [name, pkg] of Object.entries(PACKAGES)) {
+        if (name.includes(q) || pkg.desc.toLowerCase().includes(q)) {
+          const tag = pkg.installed ? '<span class="c-green">[installed]</span>' : '';
+          printLine(`<span class="c-cyan">${name}</span>/<span class="c-dim">focal ${pkg.ver}</span> — ${pkg.desc} ${tag}`);
+          found = true;
+        }
+      }
+      if (!found) print(`[No results for '${q}']`,'c-dim');
+      return;
+    }
+    if (sub==='show') {
+      const pkgName = args[1];
+      const pkg = pkgName && PACKAGES[pkgName];
+      if (!pkg) { print(`N: Unable to locate package ${pkgName||''}`,'c-red'); return; }
+      printLine(`<span class="c-yellow">Package: </span><span class="c-white">${pkgName}</span>`);
+      printLine(`<span class="c-yellow">Version: </span><span class="c-white">${pkg.ver}</span>`);
+      printLine(`<span class="c-yellow">Size:    </span><span class="c-white">${pkg.size}</span>`);
+      printLine(`<span class="c-yellow">Desc:    </span><span class="c-white">${pkg.desc}</span>`);
+      printLine(`<span class="c-yellow">Status:  </span><span class="${pkg.installed?'c-green':'c-dim'}">${pkg.installed?'installed':'not installed'}</span>`);
+      return;
+    }
+    print(`apt: invalid operation ${sub}`,'c-red');
+  },
+
+  'apt-get'(args) { CMDS.apt(args); },
+
+  pip3(args) {
+    if (!args.length) { print('pip 24.0 from /usr/lib/python3/dist-packages/pip','c-dim'); return; }
+    const sub = args[0];
+    if (sub==='install') { print(`Collecting ${args[1]||'package'}...`,'c-dim'); print(`Successfully installed ${args[1]||'package'}`,'c-green'); }
+    else if (sub==='list') {
+      printLine('<span class="c-yellow">Package    Version</span>');
+      printLine('<span class="c-dim">---------- -------</span>');
+      ['pip 24.0','setuptools 69.5.1','wheel 0.43.0','requests 2.31.0','numpy 2.0.0','rich 13.7.1'].forEach(l=>printLine(`<span class="c-white">${l}</span>`));
+    }
+    else { print(`pip: ${sub}: unknown command`,'c-red'); }
+  },
+
+  npm(args) {
+    if (!args.length) { print('npm 10.7.0','c-dim'); return; }
+    const sub = args[0];
+    if (sub==='install' || sub==='i') { print(`npm warn saveError ENOENT`,'c-yellow'); print(`added ${Math.floor(Math.random()*200+50)} packages in ${(Math.random()*3+1).toFixed(1)}s`,'c-green'); }
+    else if (sub==='list') { print('└── (empty)'); }
+    else if (sub==='--version') { print('10.7.0'); }
+    else { print(`Unknown command: "${sub}"`,'c-red'); }
+  },
+
+  cargo(args) {
+    const sub = args[0];
+    if (sub==='--version') { print('cargo 1.78.0 (2024 edition)'); return; }
+    if (sub==='new') { print(`     Created binary (application) \`${args[1]||'myapp'}\` package`,'c-green'); return; }
+    if (sub==='build') { print('   Compiling myapp v0.1.0','c-dim'); print('    Finished dev [unoptimized + debuginfo] target','c-green'); return; }
+    if (sub==='run') { print('   Compiling myapp v0.1.0','c-dim'); print('    Finished. Running `./target/debug/myapp`','c-dim'); return; }
+    print(`error: no such subcommand: \`${sub||''}\``,'c-red');
+  },
+
+  gem(args) {
+    const sub = args[0];
+    if (sub==='install') { print(`Fetching ${args[1]||'gem'}...`,'c-dim'); print(`Successfully installed ${args[1]||'gem'}-1.0.0`,'c-green'); }
+    else { print('RubyGems 3.5.9'); }
+  },
+
+  man(args) {
+    if (!args[0]) { print('What manual page do you want?','c-red'); return; }
+    printLine(`<span class="c-white c-bold">${args[0].toUpperCase()}(1)</span>           <span class="c-dim">DoktorOS Manual</span>           <span class="c-white c-bold">${args[0].toUpperCase()}(1)</span>`);
+    printLine('');
+    printLine(`<span class="c-yellow">NAME</span>`);
+    printLine(`       ${args[0]} — command from DoktorOS 1.0`);
+    printLine('');
+    printLine(`<span class="c-yellow">SYNOPSIS</span>`);
+    printLine(`       ${args[0]} [options] [arguments]`);
+    printLine('');
+    printLine(`<span class="c-dim">       (Use \`help\` for a list of all built-in commands)</span>`);
+  },
+
+  alias(args) {
+    if (!args.length) {
+      ['ll=ls -alF','la=ls -A','l=ls -CF'].forEach(a=>printLine(`<span class="c-cyan">alias</span> <span class="c-white">${a}</span>`));
+    } else { print(`alias: ${args[0]}: defined`,'c-dim'); }
+  },
+
+  neofetch() {
+    const lines = [
+      ``,
+      `    <span class="c-accent">   _____ _                 _       ___  ___</span>`,
+      `    <span class="c-accent">  / ____| |               | |     / _ \\/ __|</span>`,
+      `    <span class="c-accent"> | |    | | __ _ _   _  __| | ___| | | \\__ \\</span>`,
+      `    <span class="c-accent"> | |    | |/ _\` | | | |/ _\` |/ _ \\ | | |__) |</span>`,
+      `    <span class="c-accent"> | |____| | (_| | |_| | (_| |  __/ |_| / __/</span>`,
+      `    <span class="c-accent">  \\_____|_|\\__,_|\\__,_|\\__,_|\\___|\\___/_____/</span>`,
+      ``,
+    ];
+    const info = [
+      `<span class="c-yellow">OS:</span>       DoktorOS 1.0 LTS x86_64`,
+      `<span class="c-yellow">Kernel:</span>   6.8.0-doktoros`,
+      `<span class="c-yellow">Shell:</span>    bash 5.2.21`,
+      `<span class="c-yellow">CPU:</span>      DoktorOS vCPU @ 3.2GHz (8)`,
+      `<span class="c-yellow">Memory:</span>   412MB / 8192MB`,
+      `<span class="c-yellow">Disk:</span>     12GB / 50GB (25%)`,
+      `<span class="c-yellow">Uptime:</span>   ${Math.floor((Date.now()-startTime)/60000)}m`,
+      ``,
+      `<span class="c-yellow">Languages:</span>`,
+      `  🐍 Python 3.12   🟨 Node 22     ⚙ GCC 13`,
+      `  🔵 Go 1.22       🦀 Rust 1.78   💎 Ruby 3.3`,
+      `  ☕ Java 21        🐚 Bash 5.2`,
+    ];
+    lines.forEach(l => printLine(l));
+    info.forEach(l => printLine(`    ${l}`));
+    print('');
+  },
+
+  lolcat(args) {
+    const text = args.join(' ') || 'Hello, DoktorOS!';
+    const colors = ['c-red','c-orange','c-yellow','c-green','c-cyan','c-blue','c-purple'];
+    let html = '';
+    for (let i=0; i<text.length; i++) {
+      html += `<span class="${colors[i%colors.length]}">${escHtml(text[i])}</span>`;
+    }
+    printLine(html);
+  },
+
+  fortune() {
+    const fortunes = [
+      'A journey of a thousand miles begins with a single command.',
+      'The best error message is the one that never shows up.',
+      'chmod 777 your dreams.',
+      'There are only two hard things in Computer Science: cache invalidation and naming things.',
+      'It works on my machine.',
+      'Have you tried turning it off and on again?',
+      'sudo make me a sandwich.',
+      'In theory, there is no difference between theory and practice. But in practice, there is.',
+      'Talk is cheap. Show me the code. — Linus Torvalds',
+      'DoktorOS: where intelligence meets the terminal.',
+    ];
+    print(fortunes[Math.floor(Math.random()*fortunes.length)], 'c-yellow');
+  },
+
+  cowsay(args) {
+    const text = args.join(' ') || 'Moo!';
+    const w = text.length + 2;
+    const line = '_'.repeat(w);
+    printLine(`<span class="c-yellow"> ${'_'.repeat(w)}</span>`);
+    printLine(`<span class="c-yellow">< ${escHtml(text)} ></span>`);
+    printLine(`<span class="c-yellow"> ${'-'.repeat(w)}</span>`);
+    printLine(`<span class="c-yellow">        \\   ^__^</span>`);
+    printLine(`<span class="c-yellow">         \\  (oo)\\_______</span>`);
+    printLine(`<span class="c-yellow">            (__)\\       )\\/\\</span>`);
+    printLine(`<span class="c-yellow">                ||----w |</span>`);
+    printLine(`<span class="c-yellow">                ||     ||</span>`);
+  },
+
+  cal() {
+    const now = new Date();
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    printLine(`<span class="c-cyan c-bold">   ${months[now.getMonth()]} ${now.getFullYear()}</span>`);
+    printLine(`<span class="c-dim">Su Mo Tu We Th Fr Sa</span>`);
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    let row = '   '.repeat(firstDay);
+    for (let d=1; d<=daysInMonth; d++) {
+      const s = String(d).padStart(2);
+      row += (d===now.getDate()) ? `<span class="c-accent c-bold">${s}</span> ` : `${s} `;
+      if ((firstDay + d) % 7 === 0) { printLine(row); row = ''; }
+    }
+    if (row.trim()) printLine(row);
+  },
+
+  bc(args) { print('[bc 1.07.1 calculator — enter expressions]','c-dim'); },
+
+  yes(args) {
+    const text = args[0] || 'y';
+    for (let i=0; i<10; i++) print(text);
+    print('[...output truncated]','c-dim');
+  },
+
+  sl() {
+    print('        ====        ________                ___________','c-yellow');
+    print('    _D _|  |_______/        \\__I_I_____===__|_________|','c-yellow');
+    print('     |(_)---  |   H\\________/ |   |        =|___ ___|','c-yellow');
+    print('     /     |  |   H  |  |     |   |         ||_| |_||','c-yellow');
+    print('    |      |  |   H  |__--------------------| [___] |','c-yellow');
+    print('    | ________|___H__/__|_____/[][]~\\_______|','c-yellow');
+    print('    |/ |   |-----------I_____I [][] []  D   |=======|__','c-yellow');
+    print('  __/ =| o |=-~~\\  /~~\\  /~~\\  /~~\\ ____Y___________|__','c-yellow');
+    print(' |/-=|___|=    ||    ||    ||    |_____/~\\___/','c-yellow');
+    print('  \\_/      \\O=====O=====O=====O_/      \\_/','c-yellow');
+  },
+
+  vim(args) { print('[vim 9.1: press :q! to quit — simulated]','c-yellow'); },
+  nano(args) { print('[nano 7.2: press Ctrl+X to exit — simulated]','c-yellow'); },
+
+  exit() { print('logout','c-dim'); print('Connection to doktoros closed.','c-dim'); },
+  logout() { CMDS.exit(); },
+
+  sudo(args) {
+    print('[sudo] password for user: ','c-yellow');
+    print('user is not in the sudoers file. This incident will be reported.','c-red');
+  },
+
+  chmod(args) { print(''); },
+  chown(args) { print(''); },
+
+  diff(args) {
+    if (args.length < 2) { print('diff: missing operand after diff','c-red'); return; }
+    const a = FS[resolvePath(args[0])];
+    const b = FS[resolvePath(args[1])];
+    if (!a || !b) { print('diff: No such file or directory','c-red'); return; }
+    const linesA = (a.content||'').split('\n');
+    const linesB = (b.content||'').split('\n');
+    let diff = false;
+    linesA.forEach((ln,i) => {
+      if (ln !== (linesB[i]||'')) {
+        printLine(`<span class="c-red">&lt; ${escHtml(ln)}</span>`);
+        if (linesB[i] !== undefined) printLine(`<span class="c-green">&gt; ${escHtml(linesB[i])}</span>`);
+        diff = true;
+      }
+    });
+    if (!diff) print(`Files ${args[0]} and ${args[1]} are identical`,'c-dim');
+  },
+
+  tar(args) {
+    const flags = args.filter(a=>a.startsWith('-')).join('');
+    const files = args.filter(a=>!a.startsWith('-'));
+    if (flags.includes('c')) { print(`[Creating archive: ${files[0]||'archive.tar'}]`,'c-dim'); print('✓ Done','c-green'); }
+    else if (flags.includes('x')) { print(`[Extracting: ${files[0]||'archive.tar'}]`,'c-dim'); print('✓ Done','c-green'); }
+    else if (flags.includes('t')) { print('[Listing archive contents]','c-dim'); }
+    else { print('tar: You must specify one of the -cxt options','c-red'); }
+  },
+
+  zip(args) {
+    if (args.length < 2) { print('zip: must specify target and source files','c-red'); return; }
+    print(`  adding: ${args.slice(1).join(', ')} (stored 0%)`,'c-dim');
+    print(`✓ ${args[0]} created`,'c-green');
+  },
+
+  ssh(args) { print(`ssh: connect to host ${args[0]||'<host>'}: Connection refused`,'c-red'); },
+
+  netstat(args) {
+    printLine(`<span class="c-yellow">Active Internet connections (servers and established)</span>`);
+    printLine(`<span class="c-dim">Proto Recv-Q Send-Q Local Address           Foreign Address         State</span>`);
+    printLine(`<span class="c-white">tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN</span>`);
+    printLine(`<span class="c-white">tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN</span>`);
+  },
+
+};
+
+// ═══════════════════════════════════════════
+//  SIMULATE LANGUAGE EXECUTION
+// ═══════════════════════════════════════════
+function simulateRun(runtime, file, content) {
+  const lines = content.split('\n').filter(l => !l.startsWith('#') && !l.startsWith('//') && !l.startsWith('/*') && l.trim() && !l.startsWith('import') && !l.startsWith('package') && !l.startsWith('use ') && !l.startsWith('fn ') && !l.startsWith('public') && !l.startsWith('def ') && !l.startsWith('func ') && !l.startsWith('sub ') && !l.startsWith('.'));
+  // Find print-like statements and extract strings
+  const outputs = [];
+  for (const ln of content.split('\n')) {
+    const m = ln.match(/(?:println?|console\.log|puts|fmt\.Println|System\.out\.println|echo|printf)\s*\(?[`"']([^`"']+)[`"']/);
+    if (m) outputs.push(m[1]);
+    const m2 = ln.match(/(?:println?|console\.log|puts|fmt\.Println|System\.out\.println|echo)\s*\(?f?[`"']([^`"']+)[`"']/);
+    if (m2 && !outputs.includes(m2[1])) outputs.push(m2[1]);
+  }
+  outputs.forEach(o => print(o));
+  if (!outputs.length) print(`[Process exited with code 0]`,'c-dim');
+}
+
+// ═══════════════════════════════════════════
+//  PROCESS TABLE
+// ═══════════════════════════════════════════
+const startTime = Date.now();
+const PROCESSES = [
+  { pid:1,   user:'root', cmd:'systemd',         cpu:0.0, mem:12,  time:'0:00.12' },
+  { pid:2,   user:'root', cmd:'kthreadd',         cpu:0.0, mem:0,   time:'0:00.00' },
+  { pid:142, user:'root', cmd:'sshd',             cpu:0.0, mem:8,   time:'0:00.02' },
+  { pid:201, user:'root', cmd:'cron',             cpu:0.0, mem:4,   time:'0:00.00' },
+  { pid:312, user:'root', cmd:'NetworkManager',  cpu:0.1, mem:24,  time:'0:00.44' },
+  { pid:401, user:user,   cmd:'bash',             cpu:0.0, mem:6,   time:'0:00.08' },
+  { pid:412, user:user,   cmd:'python3',          cpu:2.1, mem:48,  time:'0:01.22' },
+  { pid:500, user:user,   cmd:'node',             cpu:1.3, mem:62,  time:'0:00.88' },
+];
+
+// ═══════════════════════════════════════════
+//  COMMAND EXECUTOR
+// ═══════════════════════════════════════════
+function exec(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return;
+  history.push(trimmed);
+  histIdx = history.length;
+  printPrompt(trimmed);
+
+  // Handle piping (basic)
+  if (trimmed.includes('|')) {
+    const parts = trimmed.split('|').map(s=>s.trim());
+    print(`[pipe: ${parts.join(' | ')} — simulated]`,'c-dim');
+    return;
+  }
+  // Handle redirections (basic)
+  if (trimmed.includes('>')) {
+    const [cmd, outfile] = trimmed.split('>').map(s=>s.trim());
+    const parts = tokenize(cmd);
+    const name = parts[0]; const args = parts.slice(1);
+    // capture output to file
+    const path = resolvePath(outfile);
+    if (!FS[path]) {
+      FS[path] = { type:'file', content:'' };
+      const parent = path.substring(0,path.lastIndexOf('/'))||'/';
+      const n = path.split('/').pop();
+      if (FS[parent]) FS[parent].children = [...new Set([...(FS[parent].children||[]),n])];
+    }
+    print(`[output redirected to ${outfile}]`,'c-dim');
+    return;
+  }
+
+  const parts = tokenize(trimmed);
+  if (!parts.length) return;
+  const name = parts[0];
+  const args = parts.slice(1);
+
+  // env var assignment
+  if (name.includes('=') && !name.startsWith('-')) {
+    const [k,...vp] = name.split('=');
+    envVars[k] = vp.join('=');
+    return;
+  }
+
+  if (CMDS[name]) {
+    try { CMDS[name](args); } catch(e) { print(`bash: ${name}: error: ${e.message}`,'c-red'); }
+  } else {
+    // check if it's an executable file
+    const node = FS[resolvePath(name)];
+    if (node && node.exec) {
+      simulateRun('bash', name, node.content || '');
+    } else if (node && node.type==='file') {
+      print(`bash: ${name}: Permission denied`,'c-red');
+    } else {
+      print(`bash: ${name}: command not found`,'c-red');
+    }
+  }
+  scrollBottom();
+}
+
+function tokenize(s) {
+  const tokens = [];
+  let cur = '', inQ = false, qChar = '';
+  for (const ch of s) {
+    if (inQ) {
+      if (ch === qChar) inQ = false;
+      else cur += ch;
+    } else if (ch==='"' || ch==="'") { inQ=true; qChar=ch; }
+    else if (ch===' ') { if (cur) tokens.push(cur); cur=''; }
+    else cur += ch;
+  }
+  if (cur) tokens.push(cur);
+  return tokens;
+}
+
+// ═══════════════════════════════════════════
+//  INPUT HANDLING
+// ═══════════════════════════════════════════
+const input = document.getElementById('cmd-input');
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    exec(input.value);
+    input.value = '';
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (histIdx > 0) { histIdx--; input.value = history[histIdx] || ''; }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (histIdx < history.length-1) { histIdx++; input.value = history[histIdx] || ''; }
+    else { histIdx = history.length; input.value = ''; }
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    autocomplete(input.value);
+  } else if (e.key === 'l' && e.ctrlKey) {
+    e.preventDefault(); CMDS.clear([]);
+  } else if (e.key === 'c' && e.ctrlKey) {
+    e.preventDefault();
+    printPrompt(input.value + '^C');
+    input.value = '';
+  }
+});
+
+function autocomplete(val) {
+  const parts = tokenize(val);
+  if (!parts.length) return;
+  if (parts.length === 1) {
+    // complete command
+    const prefix = parts[0];
+    const matches = Object.keys(CMDS).filter(c=>c.startsWith(prefix));
+    if (matches.length === 1) { input.value = matches[0] + ' '; }
+    else if (matches.length > 1) {
+      printPrompt(val);
+      printLine(matches.map(m=>`<span class="c-cyan">${m}</span>`).join('  '));
+      scrollBottom();
+    }
+  } else {
+    // complete file path
+    const last = parts[parts.length-1];
+    const dir = last.includes('/') ? resolvePath(last.substring(0,last.lastIndexOf('/'))) : cwd;
+    const base = last.includes('/') ? last.substring(last.lastIndexOf('/')+1) : last;
+    const node = FS[dir];
+    if (node && node.type==='dir') {
+      const matches = (node.children||[]).filter(c=>c.startsWith(base));
+      if (matches.length===1) {
+        const prefix = last.includes('/') ? last.substring(0,last.lastIndexOf('/')+1) : '';
+        input.value = parts.slice(0,-1).join(' ') + ' ' + prefix + matches[0];
+      } else if (matches.length>1) {
+        printPrompt(val);
+        printLine(matches.map(m=>`<span class="c-cyan">${m}</span>`).join('  '));
+        scrollBottom();
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  FILE TREE PANEL
+// ═══════════════════════════════════════════
+function buildFileTree() {
+  const tree = document.getElementById('file-tree');
+  tree.innerHTML = '';
+  function render(path, depth) {
+    const node = FS[path];
+    if (!node) return;
+    const name = path === '/' ? '/' : path.split('/').pop();
+    if (depth > 0) {
+      const item = document.createElement('div');
+      item.className = 'tree-item ' + (node.type==='dir' ? 'dir' : (node.exec?'exec':''));
+      item.style.paddingLeft = (12 + depth*14) + 'px';
+      const icon = node.type==='dir' ? (path===cwd?'📂':'📁') : (node.exec?'⚙':'📄');
+      item.innerHTML = `${icon} ${escHtml(name)}`;
+      if (node.type==='dir') item.onclick = () => { CMDS.cd([path]); };
+      else item.onclick = () => { exec(`cat ${path}`); };
+      tree.appendChild(item);
+    }
+    if (node.type==='dir' && depth < 3) {
+      for (const child of (node.children||[]).slice(0,12)) {
+        const childPath = path==='/'?`/${child}`:`${path}/${child}`;
+        render(childPath, depth+1);
+      }
+    }
+  }
+  render('/home/user', 0);
+  render('/home/user', -1); // show root-level
+  // show current dir contents
+  const node = FS[cwd];
+  if (node && node.type==='dir') {
+    const header = document.createElement('div');
+    header.className = 'tree-item dir';
+    header.style.fontWeight='600'; header.style.color='var(--accent)';
+    header.innerHTML = `📂 ${cwd.replace('/home/user','~')}`;
+    tree.prepend(header);
+    for (const child of (node.children||[])) {
+      const childPath = cwd==='/'?`/${child}`:`${cwd}/${child}`;
+      const cn = FS[childPath];
+      const item = document.createElement('div');
+      item.className = 'tree-item ' + (!cn||cn.type==='dir'?'dir':(cn.exec?'exec':''));
+      item.style.paddingLeft = '26px';
+      const icon = !cn||cn.type==='dir'?'📁':(cn.exec?'⚙':'📄');
+      item.innerHTML = `${icon} ${escHtml(child)}`;
+      if (!cn||cn.type==='dir') item.onclick = () => CMDS.cd([childPath]);
+      else item.onclick = () => exec(`cat ${childPath}`);
+      tree.appendChild(item);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════
+function switchTab(i) {
+  activeTab = i;
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  updateLivePrompt();
+}
+function newTab() {
+  const i = tabs.length;
+  tabs.push({ title:'terminal', cwd });
+  const tab = document.createElement('div');
+  tab.className = 'tab';
+  tab.id = `tab-${i}`;
+  tab.innerHTML = `<span>🖥️ terminal</span><button class="tab-close" onclick="closeTab(event,${i})">×</button>`;
+  tab.onclick = () => switchTab(i);
+  document.getElementById('tabs').insertBefore(tab, document.getElementById('new-tab-btn'));
+  switchTab(i);
+}
+function closeTab(e, i) {
+  e.stopPropagation();
+  if (tabs.length <= 1) return;
+  tabs.splice(i,1);
+  const tabEls = document.querySelectorAll('.tab');
+  tabEls[i]?.remove();
+  switchTab(Math.max(0, i-1));
+}
+
+// ═══════════════════════════════════════════
+//  CLOCK + UPTIME + METRICS
+// ═══════════════════════════════════════════
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toTimeString().slice(0,8);
+  const s = Math.floor((Date.now()-startTime)/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  document.getElementById('uptime').textContent = `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  // fake CPU
+  const cpu = (Math.random()*10+5);
+  document.getElementById('cpu-bar').style.width = cpu+'%';
+  document.getElementById('loadavg').textContent = (cpu/100*1.5+0.05).toFixed(2);
+}
+setInterval(tick, 1000); tick();
+
+function showApp(name) {
+  document.querySelectorAll('.taskbtn').forEach(b=>b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if (name==='processes') { exec('top'); }
+  else if (name==='network') { exec('ifconfig'); }
+  else if (name==='packages') { exec('apt list --installed'); }
+  else if (name==='editor') { exec('nano'); }
+  input.focus();
+}
+
+// ═══════════════════════════════════════════
+//  BOOT SEQUENCE
+// ═══════════════════════════════════════════
+const bootMessages = [
+  { msg:'[    0.000000] Booting Linux kernel 6.8.0-doktoros', color:'c-dim' },
+  { msg:'[    0.000001] Command line: BOOT_IMAGE=/vmlinuz-6.8.0 root=/dev/sda1', color:'c-dim' },
+  { msg:'[    0.083210] ACPI: Core revision 20240322', color:'c-dim' },
+  { msg:'[    0.112340] PCI: Using configuration type 1 for base access', color:'c-dim' },
+  { msg:'[    0.234150] clocksource: tsc-early: mask=0xffffffffffffffff', color:'c-dim' },
+  { msg:'[    0.512300] SystemD-udevd[89]: starting version 252', color:'c-dim' },
+  { msg:'[    0.789120] NET: Registered PF_INET6 protocol family', color:'c-dim' },
+  { msg:'[    1.001230] EXT4-fs (sda1): mounted filesystem with ordered data mode', color:'c-green' },
+  { msg:'[    1.234000] systemd[1]: Starting DoktorOS 1.0 LTS...', color:'c-white' },
+  { msg:'[  OK  ] Started Disk Manager.', color:'c-green' },
+  { msg:'[  OK  ] Started Load Kernel Modules.', color:'c-green' },
+  { msg:'[  OK  ] Started Network Manager.', color:'c-green' },
+  { msg:'[  OK  ] Reached target Network.', color:'c-green' },
+  { msg:'[  OK  ] Started Python 3.12 runtime.', color:'c-green' },
+  { msg:'[  OK  ] Started Node.js 22 runtime.', color:'c-green' },
+  { msg:'[  OK  ] Started GCC 13 toolchain.', color:'c-green' },
+  { msg:'[  OK  ] Started Go 1.22 runtime.', color:'c-green' },
+  { msg:'[  OK  ] Started Rust 1.78 toolchain.', color:'c-green' },
+  { msg:'[  OK  ] Started Ruby 3.3 runtime.', color:'c-green' },
+  { msg:'[  OK  ] Started Java 21 LTS runtime.', color:'c-green' },
+  { msg:'[  OK  ] Reached target Multi-User System.', color:'c-accent' },
+  { msg:'', color:'' },
+  { msg:'DoktorOS 1.0 LTS doktoros tty1', color:'c-white' },
+  { msg:'doktoros login: user', color:'c-cyan' },
+  { msg:'Password: ••••••••', color:'c-dim' },
+  { msg:'', color:'' },
+  { msg:'Welcome to DoktorOS 1.0 LTS (GNU/Linux 6.8.0-doktoros x86_64)', color:'c-accent' },
+];
+
+async function boot() {
+  const log = document.getElementById('boot-log');
+  const bar = document.getElementById('boot-bar');
+  for (let i=0; i<bootMessages.length; i++) {
+    await new Promise(r=>setTimeout(r, 40+Math.random()*60));
+    const { msg, color } = bootMessages[i];
+    const div = document.createElement('div');
+    div.innerHTML = color ? `<span class="${color}">${escHtml(msg)}</span>` : escHtml(msg);
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    bar.style.width = ((i+1)/bootMessages.length*100) + '%';
+  }
+  await new Promise(r=>setTimeout(r,400));
+  // fade out
+  const bootEl = document.getElementById('boot');
+  bootEl.style.transition = 'opacity 0.8s';
+  bootEl.style.opacity = '0';
+  await new Promise(r=>setTimeout(r,800));
+  bootEl.remove();
+
+  // boot complete — print welcome
+  updateLivePrompt();
+  buildFileTree();
+  printLine(`<span class="c-accent c-bold">DoktorOS 1.0 LTS</span> — <span class="c-dim">GNU/Linux 6.8.0-doktoros x86_64</span>`);
+  printLine(`Type <span class="c-cyan">help</span> for available commands, <span class="c-cyan">neofetch</span> for system info.`);
+  printLine(`Pre-installed: <span class="c-green">Python 3.12, Node 22, GCC 13, Go 1.22, Rust 1.78, Ruby 3.3, Java 21, Bash 5.2</span>`);
+  print('');
+  scrollBottom();
+  input.focus();
+}
+
+boot();
+</script>
+</body>
+</html>
